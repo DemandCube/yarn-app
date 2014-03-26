@@ -1,6 +1,8 @@
 package com.kixeye.ae.yarn;
 
 import java.io.IOException;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -9,10 +11,12 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.Container;
+import org.apache.hadoop.yarn.api.records.ContainerExitStatus;
+import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
-import org.apache.hadoop.yarn.api.records.ContainerExitStatus;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.NodeReport;
 import org.apache.hadoop.yarn.api.records.Priority;
@@ -36,20 +40,25 @@ public class ApplicationMaster {
   private int containerMem;
 
   private int containerCount;
-  private AtomicInteger completedContainerCount = new AtomicInteger();
-  private AtomicInteger allocatedContainerCount = new AtomicInteger();
-  private AtomicInteger failedContainerCount = new AtomicInteger();
-  private AtomicInteger requestedContainerCount = new AtomicInteger();
+  private String command;
+  private AtomicInteger completedContainerCount;
+  private AtomicInteger allocatedContainerCount;
+  private AtomicInteger failedContainerCount;
+  private AtomicInteger requestedContainerCount;
 
-  private String appMasterHostname = "";     //TODO: What should this really be?
-  private int appMasterRpcPort = 0;          //TODO: What should this really be?
-  private String appMasterTrackingUrl = "";  //TODO: What should this really be?
+  private String appMasterHostname = "";     // TODO: What should this really be?
+  private int appMasterRpcPort = 0;          // TODO: What should this really be?
+  private String appMasterTrackingUrl = "";  // TODO: What should this really be?
 
   private boolean done;
 
   public ApplicationMaster() {
     conf = new YarnConfiguration();
     opts = new Options();
+    completedContainerCount = new AtomicInteger();
+    allocatedContainerCount = new AtomicInteger();
+    failedContainerCount = new AtomicInteger();
+    requestedContainerCount = new AtomicInteger();
 
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
@@ -62,6 +71,7 @@ public class ApplicationMaster {
 
     this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
     this.containerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
+    this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
   }
 
   public boolean run() throws IOException, YarnException {
@@ -84,6 +94,7 @@ public class ApplicationMaster {
       ContainerRequest containerReq = setupContainerReqForRM();
       resourceManager.addContainerRequest(containerReq);
     }
+    requestedContainerCount.addAndGet(containerCount);
 
     while (!done) {
       try {
@@ -152,22 +163,38 @@ public class ApplicationMaster {
     }
 
     public void onContainersAllocated(List<Container> containers) {
+      allocatedContainerCount.addAndGet(containers.size());
+      for (Container c: containers) {
+        ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
+        ctx.setCommands(Collections.singletonList(
+              command +
+              " 1> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" +
+              " 2> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"));
 
+        System.out.println("Launching container " + c);
+        try {
+          nodeManager.startContainer(c, ctx);
+        } catch (YarnException e) {
+          // TODO: what should I do here? reallocated a new container?
+        } catch (IOException e) {
+          // TODO: what should I do here? reallocated a new container?
+        }
+      }
     }
 
-    public void onNodesUpdated(List<NodeReport> updated) {
 
-    }
+    public void onNodesUpdated(List<NodeReport> updated) { }
 
     public void onError(Throwable e) {
-
+      done = true;
+      resourceManager.stop();
     }
 
     // Called when the ResourceManager wants the ApplicationMaster to shutdown
     // for being out of sync etc. The ApplicationMaster should not unregister
     // with the RM unless the ApplicationMaster wants to be the last attempt.
     public void onShutdownRequest() {
-
+      done = true;
     }
 
     public float getProgress() {

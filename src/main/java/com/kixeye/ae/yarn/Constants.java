@@ -7,4 +7,5 @@ public class Constants {
   public static final String OPT_CONTAINER_COUNT = "container_cnt";
   public static final String OPT_LOCALJAR = "localjar";
   public static final String OPT_HDFSJAR = "hdfsjar";
+  public static final String OPT_COMMAND = "command";
 }

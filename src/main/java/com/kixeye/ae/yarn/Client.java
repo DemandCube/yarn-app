@@ -43,6 +43,7 @@ public class Client {
 
   //set by Options
   private String appname;
+  private String command;
   private int applicationMasterMem;
   private int containerMem;
   private int containerCount;
@@ -56,6 +57,7 @@ public class Client {
     // setup cli options
     this.opts = new Options();
     opts.addOption(Constants.OPT_APPNAME, true, "Application Name");
+    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
     opts.addOption(Constants.OPT_APPLICATION_MASTER_MEM, true, "AM Memory Requirement");
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory.");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of cointers.");
@@ -75,6 +77,7 @@ public class Client {
     CommandLine cliParser = new GnuParser().parse(this.opts, args);
 
     this.appname = cliParser.getOptionValue(Constants.OPT_APPNAME);
+    this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
 
     this.applicationMasterMem = Integer.parseInt(cliParser.getOptionValue(Constants.OPT_APPLICATION_MASTER_MEM));
     this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
@@ -142,6 +145,7 @@ public class Client {
     sb.append(ApplicationMaster.class).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_MEM).append(this.containerMem).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_COUNT).append(this.containerCount).append(" ");
+    sb.append("--").append(Constants.OPT_COMMAND).append(this.command).append(" ");
 
     sb.append("1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout");
     sb.append("2> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stderr");
