@@ -124,6 +124,24 @@ public class ApplicationMaster {
     return containerReq;
   }
 
+  public static void main(String[] args) {
+    ApplicationMaster am = new ApplicationMaster();
+    try {
+      am.init(args);
+    } catch (ParseException e) {
+      System.out.println("parse error: " + e);
+      System.exit(0);
+    }
+
+    try {
+      am.run();
+    } catch (Exception e) {
+      System.out.println("am.run throws: " + e);
+      e.printStackTrace();
+      System.exit(0);
+    }
+  }
+
   private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
     // CallbackHandler for RM.
     // Execute a program when the container is allocated
