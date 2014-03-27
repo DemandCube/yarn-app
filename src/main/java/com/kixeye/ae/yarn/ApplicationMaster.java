@@ -65,6 +65,7 @@ public class ApplicationMaster {
   }
 
   public void init(String[] args) throws ParseException {
+    LOG.info("ApplicationMaster::init"); //xxx
     LOG.setLevel(Level.INFO);
     CommandLine cliParser = new GnuParser().parse(this.opts, args);
     done = false;
@@ -76,6 +77,7 @@ public class ApplicationMaster {
 
   public boolean run() throws IOException, YarnException {
     // Initialize clients to RM and NMs.
+    LOG.info("ApplicationMaster::run"); //xxx
     AMRMClientAsync.CallbackHandler rmListener = new RMCallbackHandler();
     resourceManager = AMRMClientAsync.createAMRMClientAsync(1000, rmListener);
     resourceManager.init(conf);
@@ -125,6 +127,7 @@ public class ApplicationMaster {
   }
 
   public static void main(String[] args) {
+    System.out.println("ApplicationMaster::main"); //xxx
     ApplicationMaster am = new ApplicationMaster();
     try {
       am.init(args);
@@ -182,6 +185,8 @@ public class ApplicationMaster {
 
     public void onContainersAllocated(List<Container> containers) {
       allocatedContainerCount.addAndGet(containers.size());
+      LOG.info("onContainersAllocated");//xxx
+      LOG.info("LOG_DIR_EXPANSION_VAR: " + ApplicationConstants.LOG_DIR_EXPANSION_VAR); //xxx
       for (Container c: containers) {
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
         ctx.setCommands(Collections.singletonList(
@@ -189,7 +194,7 @@ public class ApplicationMaster {
               " 1> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" +
               " 2> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"));
 
-        System.out.println("Launching container " + c);
+        LOG.info("Launching container " + c);
         try {
           nodeManager.startContainer(c, ctx);
         } catch (YarnException e) {

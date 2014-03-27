@@ -142,14 +142,16 @@ public class Client {
     StringBuilder sb = new StringBuilder();
     sb.append(Environment.JAVA_HOME.$()).append("/bin/java").append(" ");
     sb.append("-Xmx").append(this.applicationMasterMem).append("M").append(" ");
-    sb.append(ApplicationMaster.class).append(" ");
-    sb.append("--").append(Constants.OPT_CONTAINER_MEM).append(this.containerMem).append(" ");
-    sb.append("--").append(Constants.OPT_CONTAINER_COUNT).append(this.containerCount).append(" ");
-    sb.append("--").append(Constants.OPT_COMMAND).append(this.command).append(" ");
+    sb.append(ApplicationMaster.class.getName()).append(" ");
+    sb.append("--").append(Constants.OPT_CONTAINER_MEM).append(" ").append(this.containerMem).append(" ");
+    sb.append("--").append(Constants.OPT_CONTAINER_COUNT).append(" ").append(this.containerCount).append(" ");
+    sb.append("--").append(Constants.OPT_COMMAND).append(" ").append(this.command).append(" ");
 
-    sb.append("1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout");
+    sb.append("1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout").append(" ");
     sb.append("2> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stderr");
-    return sb.toString();
+    String r = sb.toString();
+    LOG.info("ApplicationConstants.getCommand() : " + r); // xxx
+    return r;
   }
 
   private boolean monitorApplication(ApplicationId appId) throws YarnException, IOException {
@@ -197,7 +199,9 @@ public class Client {
       classPathEnv.append(c.trim());
     }
 
-    appMasterEnv.put(Environment.CLASSPATH.name(), classPathEnv.toString());
+    String envStr = classPathEnv.toString();
+    LOG.info("env: " + envStr); //xxx
+    appMasterEnv.put(Environment.CLASSPATH.name(), envStr);
   }
 
 
@@ -217,6 +221,7 @@ public class Client {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
     dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
+    LOG.info(dst); //xxx
     return this.setupAppMasterJar(fs.getFileStatus(dst), dst);
   }
 
@@ -225,6 +230,7 @@ public class Client {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
     dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
+    LOG.info(dst); //xxx
     Path src = new Path(localPath);
 
     fs.copyFromLocalFile(false, true, src, dst);
