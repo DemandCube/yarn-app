@@ -216,6 +216,7 @@ public class Client {
   private LocalResource setupAppMasterJar(String hdfsPath) throws IOException {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
+    dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
     return this.setupAppMasterJar(fs.getFileStatus(dst), dst);
   }
 
@@ -223,6 +224,7 @@ public class Client {
   private LocalResource setupAppMasterJar(String localPath, String hdfsPath) throws IOException {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
+    dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
     Path src = new Path(localPath);
 
     fs.copyFromLocalFile(false, true, src, dst);
