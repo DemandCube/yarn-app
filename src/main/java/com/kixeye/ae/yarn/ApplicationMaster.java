@@ -62,6 +62,7 @@ public class ApplicationMaster {
 
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
+    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
   }
 
   public void init(String[] args) throws ParseException {
