@@ -39,7 +39,6 @@ public class Client {
   private static final Logger LOG = Logger.getLogger(Client.class.getName());
   private YarnClient yarnClient;
   private Configuration conf;
-  private Options opts;
 
   //set by Options
   private String appname;
@@ -50,17 +49,27 @@ public class Client {
   private String localJar;
   private String hdfsJar;
 
-  public Client() throws Exception{
-    this.conf = new YarnConfiguration();
-    this.yarnClient = YarnClient.createYarnClient();
-
-    // setup cli options
-    this.opts = new Options();
+  public static Options opts = new Options();
+  static {
     opts.addOption(Constants.OPT_APPNAME, true, "Application Name");
     opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
     opts.addOption(Constants.OPT_APPLICATION_MASTER_MEM, true, "AM Memory Requirement");
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory.");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of cointers.");
+  }
+
+
+  public Client() throws Exception{
+    this.conf = new YarnConfiguration();
+    this.yarnClient = YarnClient.createYarnClient();
+
+    // setup cli options
+    //this.opts = new Options();
+    //opts.addOption(Constants.OPT_APPNAME, true, "Application Name");
+    //opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
+    //opts.addOption(Constants.OPT_APPLICATION_MASTER_MEM, true, "AM Memory Requirement");
+    //opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory.");
+    //opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of cointers.");
 
     opts.addOption(Constants.OPT_LOCALJAR, false, "JAR file containing the application master on your filesystem. If this is option is present, one must provide hdfsjar");
     opts.addOption(Constants.OPT_HDFSJAR, true, "JAR file containing the application master on your hdfs. if localjar is not present, it will assume that the jar file is already present on HDFS. Otherwise, it will copyFromLocal from local fs to hdfs.");
@@ -145,7 +154,7 @@ public class Client {
     sb.append(ApplicationMaster.class.getName()).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_MEM).append(" ").append(this.containerMem).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_COUNT).append(" ").append(this.containerCount).append(" ");
-    sb.append("--").append(Constants.OPT_COMMAND).append(" ").append(this.command).append(" ");
+    sb.append("--").append(Constants.OPT_COMMAND).append(" \"").append(this.command).append("\" ");
 
     sb.append("1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout").append(" ");
     sb.append("2> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stderr");
@@ -221,7 +230,6 @@ public class Client {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
     dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
-    LOG.info(dst); //xxx
     return this.setupAppMasterJar(fs.getFileStatus(dst), dst);
   }
 
@@ -230,7 +238,6 @@ public class Client {
     FileSystem fs = FileSystem.get(this.conf);
     Path dst = new Path(hdfsPath);
     dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
-    LOG.info(dst); //xxx
     Path src = new Path(localPath);
 
     fs.copyFromLocalFile(false, true, src, dst);

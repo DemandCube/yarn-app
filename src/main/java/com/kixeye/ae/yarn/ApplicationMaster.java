@@ -127,6 +127,10 @@ public class ApplicationMaster {
     return containerReq;
   }
 
+  protected String buildCommandStr() {
+    return command;
+  }
+
   public static void main(String[] args) {
     System.out.println("ApplicationMaster::main"); //xxx
     ApplicationMaster am = new ApplicationMaster();
@@ -186,16 +190,13 @@ public class ApplicationMaster {
 
     public void onContainersAllocated(List<Container> containers) {
       allocatedContainerCount.addAndGet(containers.size());
-      LOG.info("onContainersAllocated");//xxx
-      LOG.info("LOG_DIR_EXPANSION_VAR: " + ApplicationConstants.LOG_DIR_EXPANSION_VAR); //xxx
       for (Container c: containers) {
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
         ctx.setCommands(Collections.singletonList(
-              command +
+              buildCommandStr() +
               " 1> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" +
               " 2> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"));
 
-        LOG.info("Launching container " + c);
         try {
           nodeManager.startContainer(c, ctx);
         } catch (YarnException e) {
