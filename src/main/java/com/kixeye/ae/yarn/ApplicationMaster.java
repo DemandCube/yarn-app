@@ -1,8 +1,11 @@
 package com.kixeye.ae.yarn;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.cli.CommandLine;
@@ -13,6 +16,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerExitStatus;
+import org.apache.hadoop.yarn.api.records.ContainerId;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.ContainerState;
 import org.apache.hadoop.yarn.api.records.ContainerStatus;
@@ -50,6 +54,8 @@ public abstract class ApplicationMaster {
   private String appMasterTrackingUrl = "";  // TODO: What should this really be?
 
   private boolean done;
+  protected Map<ContainerId, String> containerIdCommandMap;
+  protected List<String> failedCommandList;
 
   public ApplicationMaster() {
     conf = new YarnConfiguration();
@@ -62,6 +68,9 @@ public abstract class ApplicationMaster {
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
     opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
+
+    containerIdCommandMap = new HashMap<ContainerId, String>();
+    failedCommandList = new ArrayList<String>();
   }
 
   public void init(String[] args) throws ParseException {
@@ -127,6 +136,12 @@ public abstract class ApplicationMaster {
     return containerReq;
   }
 
+  private synchronized void recordFailedCommand(ContainerId cid) {
+    String failedCmd = containerIdCommandMap.get(cid);
+    containerIdCommandMap.remove(cid);
+    failedCommandList.add(failedCmd);
+  }
+
   abstract protected List<String> buildCommandList(int startingFrom, int containerCnt, String commandTemplate);
 
   private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
@@ -146,6 +161,7 @@ public abstract class ApplicationMaster {
           }
           allocatedContainerCount.decrementAndGet();
           requestedContainerCount.decrementAndGet();
+          recordFailedCommand(status.getContainerId());
         } else {
           completedContainerCount.incrementAndGet();
         }
@@ -169,16 +185,30 @@ public abstract class ApplicationMaster {
 
     public void onContainersAllocated(List<Container> containers) {
       int containerCnt = containers.size();
-      int startFrom = allocatedContainerCount.getAndAdd(containerCnt);
-      LOG.info("containerCnt: " + containerCnt); //xxx
-      List<String> cmdLst = buildCommandList(startFrom, containerCnt, command);
+      List<String> cmdLst;
+
+      if (failedCommandList.isEmpty()) {
+        int startFrom = allocatedContainerCount.getAndAdd(containerCnt);
+        LOG.info("containerCnt: " + containerCnt); //xxx
+        cmdLst = buildCommandList(startFrom, containerCnt, command);
+      } else {
+        // TODO: keep track of failed commands' history.
+        cmdLst = failedCommandList;
+        int failedCommandListCnt = failedCommandList.size();
+        if (failedCommandListCnt < containerCnt) {
+          // It's possible that the allocated containers are for both newly allocated and failed containers
+          int startFrom = allocatedContainerCount.getAndAdd(containerCnt - failedCommandListCnt);
+          cmdLst.addAll(buildCommandList(startFrom, containerCnt, command));
+        }
+      }
 
       for (int i = 0; i < containerCnt; i++) {
         Container c = containers.get(i);
-        String cmdStr = cmdLst.get(i);
+        String cmdStr = cmdLst.remove(0);
         LOG.info("running cmd: " + cmdStr); //xxx
         StringBuilder sb = new StringBuilder();
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
+        containerIdCommandMap.put(c.getId(), cmdStr);
         ctx.setCommands(Collections.singletonList(
               sb.append(cmdStr)
                 .append(" 1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout")
