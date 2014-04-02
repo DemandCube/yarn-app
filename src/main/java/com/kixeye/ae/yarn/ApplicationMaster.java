@@ -1,7 +1,6 @@
 package com.kixeye.ae.yarn;
 
 import java.io.IOException;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,12 +29,12 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-public class ApplicationMaster {
+public abstract class ApplicationMaster {
   private AMRMClientAsync<ContainerRequest> resourceManager;
   private NMClient nodeManager;
 
   private Configuration conf;
-  private static final Logger LOG = Logger.getLogger(ApplicationMaster.class.getName());
+  protected static final Logger LOG = Logger.getLogger(ApplicationMaster.class.getName());
   private Options opts;
   private int containerMem;
 
@@ -74,6 +73,7 @@ public class ApplicationMaster {
     this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
     this.containerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
     this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
+    LOG.info("command template: this.command");
   }
 
   public boolean run() throws IOException, YarnException {
@@ -127,28 +127,7 @@ public class ApplicationMaster {
     return containerReq;
   }
 
-  protected String buildCommandStr() {
-    return command;
-  }
-
-  public static void main(String[] args) {
-    System.out.println("ApplicationMaster::main"); //xxx
-    ApplicationMaster am = new ApplicationMaster();
-    try {
-      am.init(args);
-    } catch (ParseException e) {
-      System.out.println("parse error: " + e);
-      System.exit(0);
-    }
-
-    try {
-      am.run();
-    } catch (Exception e) {
-      System.out.println("am.run throws: " + e);
-      e.printStackTrace();
-      System.exit(0);
-    }
-  }
+  abstract protected List<String> buildCommandList(int startingFrom, int containerCnt, String commandTemplate);
 
   private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
     // CallbackHandler for RM.
@@ -189,14 +168,22 @@ public class ApplicationMaster {
     }
 
     public void onContainersAllocated(List<Container> containers) {
-      allocatedContainerCount.addAndGet(containers.size());
-      for (Container c: containers) {
+      int containerCnt = containers.size();
+      int startFrom = allocatedContainerCount.getAndAdd(containerCnt);
+      LOG.info("containerCnt: " + containerCnt); //xxx
+      List<String> cmdLst = buildCommandList(startFrom, containerCnt, command);
+
+      for (int i = 0; i < containerCnt; i++) {
+        Container c = containers.get(i);
+        String cmdStr = cmdLst.get(i);
+        LOG.info("running cmd: " + cmdStr); //xxx
+        StringBuilder sb = new StringBuilder();
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
         ctx.setCommands(Collections.singletonList(
-              buildCommandStr() +
-              " 1> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" +
-              " 2> " + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"));
-
+              sb.append(cmdStr)
+                .append(" 1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout")
+                .append(" 2> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stderr")
+                .toString()));
         try {
           nodeManager.startContainer(c, ctx);
         } catch (YarnException e) {

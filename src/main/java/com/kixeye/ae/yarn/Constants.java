@@ -8,4 +8,5 @@ public class Constants {
   public static final String OPT_LOCALJAR = "localjar";
   public static final String OPT_HDFSJAR = "hdfsjar";
   public static final String OPT_COMMAND = "command";
+  public static final String OPT_APPLICATION_MASTER_CLASS_NAME = "am_class_name";
 }
