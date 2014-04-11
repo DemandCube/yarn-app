@@ -1,4 +1,4 @@
-package com.kixeye.ae.yarn;
+package com.demandcube.yarn;
 
 public class Constants {
   public static final String OPT_APPNAME = "app_name";
