@@ -7,10 +7,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
 
-public class PythonStreamingAM extends ApplicationMaster {
-  //private static final Logger LOG = Logger.getLogger(PythonStreamingAM.class.getName());
+public class SampleAM extends AbstractApplicationMaster {
 
-  public PythonStreamingAM() {
+  public SampleAM() {
     super();
   }
 
@@ -33,7 +32,7 @@ public class PythonStreamingAM extends ApplicationMaster {
 
   public static void main(String[] args) {
     System.out.println("ApplicationMaster::main"); //xxx
-    ApplicationMaster am = new PythonStreamingAM();
+    AbstractApplicationMaster am = new SampleAM();
     try {
       am.init(args);
     } catch (ParseException e) {

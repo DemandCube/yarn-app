@@ -62,6 +62,7 @@ public class Client {
 
 
   public Client() throws Exception{
+    LOG.info("Client::Client()");//xxx
     this.conf = new YarnConfiguration();
     this.yarnClient = YarnClient.createYarnClient();
 
@@ -95,6 +96,7 @@ public class Client {
   }
 
   public boolean run() throws IOException, YarnException {
+    LOG.info("calling run.");//xxx
     yarnClient.start();
 
     // YarnClientApplication is used to populate:
@@ -241,6 +243,7 @@ public class Client {
   }
 
   public static void main(String[] args) throws Exception {
+    LOG.info("main");//xxx
     Client c = new Client();
     boolean r = false;
 

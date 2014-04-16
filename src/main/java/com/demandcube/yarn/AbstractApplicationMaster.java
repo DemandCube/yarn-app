@@ -33,16 +33,16 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-public abstract class ApplicationMaster {
+public abstract class AbstractApplicationMaster {
   private AMRMClientAsync<ContainerRequest> resourceManager;
   private NMClient nodeManager;
 
   private Configuration conf;
-  protected static final Logger LOG = Logger.getLogger(ApplicationMaster.class.getName());
-  private Options opts;
+  protected static final Logger LOG = Logger.getLogger(AbstractApplicationMaster.class.getName());
+  protected Options opts;
   private int containerMem;
 
-  private int containerCount;
+  private int totalContainerCount;
   private String command;
   private AtomicInteger completedContainerCount;
   private AtomicInteger allocatedContainerCount;
@@ -57,7 +57,7 @@ public abstract class ApplicationMaster {
   protected Map<ContainerId, String> containerIdCommandMap;
   protected List<String> failedCommandList;
 
-  public ApplicationMaster() {
+  public AbstractApplicationMaster() {
     conf = new YarnConfiguration();
     opts = new Options();
     completedContainerCount = new AtomicInteger();
@@ -67,20 +67,19 @@ public abstract class ApplicationMaster {
 
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
-    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
+    //opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
 
     containerIdCommandMap = new HashMap<ContainerId, String>();
     failedCommandList = new ArrayList<String>();
   }
 
   public void init(String[] args) throws ParseException {
-    LOG.info("ApplicationMaster::init"); //xxx
     LOG.setLevel(Level.INFO);
     CommandLine cliParser = new GnuParser().parse(this.opts, args);
     done = false;
 
     this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
-    this.containerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
+    this.totalContainerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
     this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
     LOG.info("command template: this.command");
   }
@@ -102,11 +101,11 @@ public abstract class ApplicationMaster {
 
 
     // Ask RM to give us a bunch of containers
-    for (int i = 0; i < containerCount; i++) {
+    for (int i = 0; i < totalContainerCount; i++) {
       ContainerRequest containerReq = setupContainerReqForRM();
       resourceManager.addContainerRequest(containerReq);
     }
-    requestedContainerCount.addAndGet(containerCount);
+    requestedContainerCount.addAndGet(totalContainerCount);
 
     while (!done) {
       try {
@@ -142,7 +141,7 @@ public abstract class ApplicationMaster {
     failedCommandList.add(failedCmd);
   }
 
-  abstract protected List<String> buildCommandList(int startingFrom, int containerCnt, String commandTemplate);
+  abstract protected List<String> buildCommandList(int startingFrom, int containerCnt, String command);
 
   private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
     // CallbackHandler for RM.
@@ -167,7 +166,7 @@ public abstract class ApplicationMaster {
         }
       }
 
-      int askAgainCount = containerCount - requestedContainerCount.get();
+      int askAgainCount = totalContainerCount - requestedContainerCount.get();
       requestedContainerCount.addAndGet(askAgainCount);
 
       if (askAgainCount > 0) {
@@ -178,7 +177,7 @@ public abstract class ApplicationMaster {
         }
       }
 
-      if (completedContainerCount.get() == containerCount) {
+      if (completedContainerCount.get() == totalContainerCount) {
         done = true;
       }
     }
