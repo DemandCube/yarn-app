@@ -7,6 +7,10 @@ Runtime Rerequisite
 ===================
 1. Install Hadoop2.0 + yarn
 2. Edit yarn-site.xml. Make sure that yarn.nodemanager.delete.debug-delay-sec is set to something other than zero. Otherwise, Yarn will conveniently delete your local log files.
+3. Copy the jar file to hdfs
+```
+hdfs dfs -copyFromLocal [name of the jar].jar /
+```
 
 
 Run
