@@ -42,7 +42,7 @@ public abstract class AbstractApplicationMaster {
   protected Options opts;
   private int containerMem;
 
-  private int totalContainerCount;
+  protected int totalContainerCount;
   private String command;
   private AtomicInteger completedContainerCount;
   private AtomicInteger allocatedContainerCount;
@@ -67,7 +67,7 @@ public abstract class AbstractApplicationMaster {
 
     opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
     opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
-    //opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
+    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
 
     containerIdCommandMap = new HashMap<ContainerId, String>();
     failedCommandList = new ArrayList<String>();
