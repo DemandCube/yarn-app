@@ -8,10 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.Container;
@@ -33,17 +29,24 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.beust.jcommander.Parameter;
+
 public abstract class AbstractApplicationMaster {
   private AMRMClientAsync<ContainerRequest> resourceManager;
   private NMClient nodeManager;
 
   private Configuration conf;
   protected static final Logger LOG = Logger.getLogger(AbstractApplicationMaster.class.getName());
-  protected Options opts;
+
+  @Parameter(names = {"-" + Constants.OPT_CONTAINER_MEM, "--" + Constants.OPT_CONTAINER_MEM})
   private int containerMem;
 
+  @Parameter(names = {"-" + Constants.OPT_CONTAINER_COUNT, "--" + Constants.OPT_CONTAINER_COUNT})
   protected int totalContainerCount;
+
+  @Parameter(names = {"-" + Constants.OPT_COMMAND, "--" + Constants.OPT_COMMAND})
   private String command;
+
   private AtomicInteger completedContainerCount;
   private AtomicInteger allocatedContainerCount;
   private AtomicInteger failedContainerCount;
@@ -59,34 +62,24 @@ public abstract class AbstractApplicationMaster {
 
   public AbstractApplicationMaster() {
     conf = new YarnConfiguration();
-    opts = new Options();
     completedContainerCount = new AtomicInteger();
     allocatedContainerCount = new AtomicInteger();
     failedContainerCount = new AtomicInteger();
     requestedContainerCount = new AtomicInteger();
 
-    opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory");
-    opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of containers");
-    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
-
     containerIdCommandMap = new HashMap<ContainerId, String>();
     failedCommandList = new ArrayList<String>();
   }
 
-  public void init(String[] args) throws ParseException {
+  public void init(String[] args) {
     LOG.setLevel(Level.INFO);
-    CommandLine cliParser = new GnuParser().parse(this.opts, args);
     done = false;
-
-    this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
-    this.totalContainerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
-    this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
-    LOG.info("command template: this.command");
   }
 
   public boolean run() throws IOException, YarnException {
     // Initialize clients to RM and NMs.
-    LOG.info("ApplicationMaster::run"); //xxx
+    LOG.info("ApplicationMaster::run");
+    LOG.error("command: " + this.command);
     AMRMClientAsync.CallbackHandler rmListener = new RMCallbackHandler();
     resourceManager = AMRMClientAsync.createAMRMClientAsync(1000, rmListener);
     resourceManager.init(conf);
@@ -188,7 +181,7 @@ public abstract class AbstractApplicationMaster {
 
       if (failedCommandList.isEmpty()) {
         int startFrom = allocatedContainerCount.getAndAdd(containerCnt);
-        LOG.info("containerCnt: " + containerCnt); //xxx
+        LOG.error("containerCnt: " + containerCnt);
         cmdLst = buildCommandList(startFrom, containerCnt, command);
       } else {
         // TODO: keep track of failed commands' history.
@@ -204,7 +197,7 @@ public abstract class AbstractApplicationMaster {
       for (int i = 0; i < containerCnt; i++) {
         Container c = containers.get(i);
         String cmdStr = cmdLst.remove(0);
-        LOG.info("running cmd: " + cmdStr); //xxx
+        LOG.error("running cmd: " + cmdStr);
         StringBuilder sb = new StringBuilder();
         ContainerLaunchContext ctx = Records.newRecord(ContainerLaunchContext.class);
         containerIdCommandMap.put(c.getId(), cmdStr);

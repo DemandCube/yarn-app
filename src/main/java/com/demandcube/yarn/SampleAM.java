@@ -3,8 +3,7 @@ package com.demandcube.yarn;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.cli.ParseException;
-import org.apache.log4j.Logger;
+import com.beust.jcommander.JCommander;
 
 
 public class SampleAM extends AbstractApplicationMaster {
@@ -21,7 +20,6 @@ public class SampleAM extends AbstractApplicationMaster {
     for (int i = startingFrom; i < stopAt; i++) {
       StringBuilder sb = new StringBuilder();
       sb.append(commandTemplate).append(" ").append(String.valueOf(i));
-      //String cmd = String.format(commandTemplate, i);
       String cmd = sb.toString();
       LOG.info("curr i : " + i);
       LOG.info(cmd);
@@ -33,12 +31,8 @@ public class SampleAM extends AbstractApplicationMaster {
   public static void main(String[] args) {
     System.out.println("ApplicationMaster::main"); //xxx
     AbstractApplicationMaster am = new SampleAM();
-    try {
-      am.init(args);
-    } catch (ParseException e) {
-      System.out.println("parse error: " + e);
-      System.exit(0);
-    }
+    new JCommander(am, args);
+    am.init(args);
 
     try {
       am.run();

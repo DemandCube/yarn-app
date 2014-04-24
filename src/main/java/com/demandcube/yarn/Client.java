@@ -6,10 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -22,7 +19,8 @@ import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
 import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
 import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
-import org.apache.hadoop.yarn.api.records.LocalResource; import org.apache.hadoop.yarn.api.records.LocalResourceType;
+import org.apache.hadoop.yarn.api.records.LocalResource;
+import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
@@ -35,40 +33,34 @@ import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+
 public class Client {
   private static final Logger LOG = Logger.getLogger(Client.class.getName());
   private YarnClient yarnClient;
   private Configuration conf;
 
-  //set by Options
+  @Parameter(names = {"-" + Constants.OPT_APPNAME, "--" + Constants.OPT_APPNAME})
   private String appname;
+  @Parameter(names = {"-" + Constants.OPT_COMMAND, "--" + Constants.OPT_COMMAND})
   private String command;
+  @Parameter(names = {"-" + Constants.OPT_APPLICATION_MASTER_MEM, "--" + Constants.OPT_APPLICATION_MASTER_MEM})
   private int applicationMasterMem;
+  @Parameter(names = {"-" + Constants.OPT_CONTAINER_MEM, "--" + Constants.OPT_CONTAINER_MEM})
   private int containerMem;
+  @Parameter(names = {"-" + Constants.OPT_CONTAINER_COUNT, "--" + Constants.OPT_CONTAINER_COUNT})
   private int containerCount;
-  private String localJar;
+
+  @Parameter(names = {"-" + Constants.OPT_HDFSJAR, "--" + Constants.OPT_HDFSJAR})
   private String hdfsJar;
+  @Parameter(names = {"-" + Constants.OPT_APPLICATION_MASTER_CLASS_NAME, "--" + Constants.OPT_APPLICATION_MASTER_CLASS_NAME})
   private String applicationMasterClassName;
 
-  public static Options opts = new Options();
-  static {
-    opts.addOption(Constants.OPT_APPNAME, true, "Application Name");
-    opts.addOption(Constants.OPT_COMMAND, true, "Command to run on the cluster.");
-    opts.addOption(Constants.OPT_APPLICATION_MASTER_MEM, true, "AM Memory Requirement");
-    opts.addOption(Constants.OPT_APPLICATION_MASTER_CLASS_NAME, true, "AM Class name.");
-    opts.addOption(Constants.OPT_CONTAINER_MEM, true, "container memory.");
-    opts.addOption(Constants.OPT_CONTAINER_COUNT, true, "number of cointers.");
-  }
-
-
   public Client() throws Exception{
-    LOG.info("Client::Client()");//xxx
     this.conf = new YarnConfiguration();
     this.yarnClient = YarnClient.createYarnClient();
-
-    opts.addOption(Constants.OPT_LOCALJAR, false, "JAR file containing the application master on your filesystem. If this is option is present, one must provide hdfsjar");
-    opts.addOption(Constants.OPT_HDFSJAR, true, "JAR file containing the application master on your hdfs. if localjar is not present, it will assume that the jar file is already present on HDFS. Otherwise, it will copyFromLocal from local fs to hdfs.");
-
+    //
     // Yarn Client's initialization determines the RM's IP address and port.
     // These values are extracted from yarn-site.xml or yarn-default.xml.
     // It also determines the interval by which it should poll for the
@@ -76,27 +68,13 @@ public class Client {
     yarnClient.init(conf);
   }
 
-  public void init(String[] args) throws ParseException {
+  public void init(String[] args) {
     LOG.setLevel(Level.INFO);
-    CommandLine cliParser = new GnuParser().parse(this.opts, args);
-
-    this.appname = cliParser.getOptionValue(Constants.OPT_APPNAME);
-    this.command = cliParser.getOptionValue(Constants.OPT_COMMAND);
-
-    this.applicationMasterMem = Integer.parseInt(cliParser.getOptionValue(Constants.OPT_APPLICATION_MASTER_MEM));
-    this.containerMem = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_MEM) );
-    this.containerCount = Integer.parseInt( cliParser.getOptionValue(Constants.OPT_CONTAINER_COUNT) );
-    this.applicationMasterClassName = cliParser.getOptionValue(Constants.OPT_APPLICATION_MASTER_CLASS_NAME);
-
-
-    if (cliParser.hasOption(Constants.OPT_LOCALJAR)) {
-      this.localJar = cliParser.getOptionValue(Constants.OPT_LOCALJAR);
-    }
-    this.hdfsJar = cliParser.getOptionValue(Constants.OPT_HDFSJAR);
+    LOG.info("command: " + this.command);
   }
 
   public boolean run() throws IOException, YarnException {
-    LOG.info("calling run.");//xxx
+    LOG.info("calling run.");
     yarnClient.start();
 
     // YarnClientApplication is used to populate:
@@ -115,11 +93,7 @@ public class Client {
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
 
     LocalResource appMasterJar;
-    if (this.localJar == null) {
-      appMasterJar = this.setupAppMasterJar(this.hdfsJar);
-    } else {
-      appMasterJar = this.setupAppMasterJar(this.localJar, this.hdfsJar);
-    }
+    appMasterJar = this.setupAppMasterJar(this.hdfsJar);
     amContainer.setLocalResources(
         Collections.singletonMap("ae_master.jar", appMasterJar));
 
@@ -152,12 +126,12 @@ public class Client {
     sb.append(this.applicationMasterClassName).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_MEM).append(" ").append(this.containerMem).append(" ");
     sb.append("--").append(Constants.OPT_CONTAINER_COUNT).append(" ").append(this.containerCount).append(" ");
-    sb.append("--").append(Constants.OPT_COMMAND).append(" \"").append(this.command).append("\" ");
+    sb.append("--").append(Constants.OPT_COMMAND).append(" '").append(StringEscapeUtils.escapeJava(this.command)).append("' ");
 
     sb.append("1> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stdout").append(" ");
     sb.append("2> ").append(ApplicationConstants.LOG_DIR_EXPANSION_VAR).append("/stderr");
     String r = sb.toString();
-    LOG.info("ApplicationConstants.getCommand() : " + r); // xxx
+    LOG.info("ApplicationConstants.getCommand() : " + r);
     return r;
   }
 
@@ -207,12 +181,11 @@ public class Client {
     }
 
     String envStr = classPathEnv.toString();
-    LOG.info("env: " + envStr); //xxx
+    LOG.info("env: " + envStr);
     appMasterEnv.put(Environment.CLASSPATH.name(), envStr);
   }
 
 
-  //TODO: what if we need more than one resource?
   private LocalResource setupAppMasterJar(FileStatus status, Path jarHdfsPath) throws IOException {
     LocalResource appMasterJar =  Records.newRecord(LocalResource.class);
     appMasterJar.setResource(ConverterUtils.getYarnUrlFromPath(jarHdfsPath));
@@ -231,29 +204,15 @@ public class Client {
     return this.setupAppMasterJar(fs.getFileStatus(dst), dst);
   }
 
-  // copy from localPath to hdfsPath prior to setting up the jar for AppMaster.
-  private LocalResource setupAppMasterJar(String localPath, String hdfsPath) throws IOException {
-    FileSystem fs = FileSystem.get(this.conf);
-    Path dst = new Path(hdfsPath);
-    dst = fs.makeQualified(dst); // must use fully qualified path name. Otherise, nodemanager gets angry.
-    Path src = new Path(localPath);
-
-    fs.copyFromLocalFile(false, true, src, dst);
-    return this.setupAppMasterJar(fs.getFileStatus(dst), dst);
-  }
-
   public static void main(String[] args) throws Exception {
-    LOG.info("main");//xxx
+    LOG.info("main");
     Client c = new Client();
     boolean r = false;
 
-    try {
-      c.init(args);
-    } catch (ParseException e) {
-      System.exit(-1);
-    }
-
+    new JCommander(c, args);
+    c.init(args);
     r = c.run();
+
     if (r) {
       System.exit(0);
     }
