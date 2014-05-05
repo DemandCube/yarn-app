@@ -8,15 +8,10 @@ wget http://apache.mirrors.spacedump.net/hadoop/common/stable/hadoop-2.2.0.tar.g
 tar xvf hadoop-2.2.0.tar.gz --gzip
 rm hadoop-2.2.0.tar.gz
 ```
-The following lines should be added to your ~/.bashrc, make sure to change your_username by your current username.
+The following line should be added to your ~/.bashrc, make sure to change your_username by your current username.
 ```
 export HADOOP_PREFIX="/home/your_username/programs/hadoop-2.2.0"
-export HADOOP_HOME=$HADOOP_PREFIX
-export HADOOP_COMMON_HOME=$HADOOP_PREFIX
-export HADOOP_CONF_DIR=$HADOOP_PREFIX/etc/hadoop
-export HADOOP_HDFS_HOME=$HADOOP_PREFIX
-export HADOOP_MAPRED_HOME=$HADOOP_PREFIX
-export HADOOP_YARN_HOME=$HADOOP_PREFIX
+
 ```
 Change $HADOOP_PREFIX/etc/hadoop/hdfs-site.xml to have the following :
 ```
