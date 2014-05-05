@@ -1,13 +1,15 @@
 Install Hadoop
 ==============
+Downloading hadoop + yarn
+```
 mkdir -p ~/programs
 cd ~/programs
 wget http://apache.mirrors.spacedump.net/hadoop/common/stable/hadoop-2.2.0.tar.gz
 tar xvf hadoop-2.2.0.tar.gz --gzip
 rm hadoop-2.2.0.tar.gz
-
-The following lines should be added to either your ~/.bashrc, make sure to change your_username by your current username.
-
+```
+The following lines should be added to your ~/.bashrc, make sure to change your_username by your current username.
+```
 export HADOOP_PREFIX="/home/your_username/programs/hadoop-2.2.0"
 export HADOOP_HOME=$HADOOP_PREFIX
 export HADOOP_COMMON_HOME=$HADOOP_PREFIX
@@ -15,9 +17,9 @@ export HADOOP_CONF_DIR=$HADOOP_PREFIX/etc/hadoop
 export HADOOP_HDFS_HOME=$HADOOP_PREFIX
 export HADOOP_MAPRED_HOME=$HADOOP_PREFIX
 export HADOOP_YARN_HOME=$HADOOP_PREFIX
-
-Change hdfs-site.xml to have the following :
-
+```
+Change $HADOOP_PREFIX/etc/hadoop/hdfs-site.xml to have the following :
+```
 <configuration>
   <property>
     <name>dfs.datanode.data.dir</name>
@@ -31,9 +33,9 @@ Change hdfs-site.xml to have the following :
     <description>Path on the local filesystem where the NameNode stores the namespace and transaction logs persistently.</description>
   </property>
 </configuration>
-
+```
 Add the following to $HADOOP_PREFIX/etc/hadoop/core-site.xml to let the Hadoop modules know where the HDFS NameNode is located.
-
+```
 <configuration>
   <property>
     <name>fs.defaultFS</name>
@@ -41,9 +43,9 @@ Add the following to $HADOOP_PREFIX/etc/hadoop/core-site.xml to let the Hadoop m
     <description>NameNode URI</description>
   </property>
 </configuration>
-
+```
 Add the following to $HADOOP_PREFIX/etc/hadoop/yarn-site.xml.
-
+```
 <configuration>
   <property>
     <name>yarn.scheduler.minimum-allocation-mb</name>
@@ -80,10 +82,10 @@ Add the following to $HADOOP_PREFIX/etc/hadoop/yarn-site.xml.
     <value>10000000</value>
   </property>
 </configuration>
-
+```
 
 Starting
-
+```
 ## Start HDFS daemons
 # Format the namenode directory (DO THIS ONLY ONCE, THE FIRST TIME)
 $HADOOP_PREFIX/bin/hdfs namenode -format
@@ -97,21 +99,21 @@ $HADOOP_PREFIX/sbin/hadoop-daemon.sh start datanode
 $HADOOP_PREFIX/sbin/yarn-daemon.sh start resourcemanager
 # Start the nodemanager daemon
 $HADOOP_PREFIX/sbin/yarn-daemon.sh start nodemanager
-
+```
 
 Compile
 =======
 
 1. mvn package
 
-2. Copy the jar file to hdfs
+2. Copy the yarn-0.0.1-SNAPSHOT.jar to Hadoop Folder, then copy it to hdfs.
 ```
-hdfs dfs -copyFromLocal [name of the jar].jar /
+$HADOOP_PREFIX/bin/hdfs dfs -copyFromLocal yarn-0.0.1-SNAPSHOT.jar /
 ```
 
 Run
 ===
 ```
-/usr/lib/hadoop/bin/hadoop jar yarn-0.0.1-SNAPSHOT.jar com.demandcube.yarn.Client -am_mem 300 -container_mem 300 --container_cnt 4 --hdfsjar /app/yarn-0.0.1-SNAPSHOT.jar --app_name foobar --command "echo" --am_class_name "com.demandcube.yarn.SampleAM"
+$HADOOP_PREFIX/bin/hadoop jar yarn-0.0.1-SNAPSHOT.jar com.demandcube.yarn.Client -am_mem 300 -container_mem 300 --container_cnt 4 --hdfsjar /yarn-0.0.1-SNAPSHOT.jar --app_name foobar --command "echo" --am_class_name "com.demandcube.yarn.SampleAM"
 
 ```
